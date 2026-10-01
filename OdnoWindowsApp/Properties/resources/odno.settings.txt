@@ -1,4 +1,0 @@
-is_ffmpeg_installed=false
-theme=light
-default_cdrom=D:\
-odno_tunes_path=C:\Users\jake\Music\odno

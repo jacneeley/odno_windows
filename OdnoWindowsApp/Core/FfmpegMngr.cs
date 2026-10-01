@@ -1,6 +1,7 @@
 ﻿using FFMpegCore;
 using FFMpegCore.Enums;
 using FFMpegCore.Exceptions;
+using FFMpegCore.Extensions.Downloader;
 using OdnoWindowsApp.Model;
 using System;
 using System.Collections.Generic;
@@ -12,8 +13,38 @@ namespace OdnoWindowsApp.Core
 {
     public static class FfmpegMngr
     {
-        public static void initFFMPEG() { 
-            //TODO: set up install
+        public static async Task<bool> InitFFMPEG() {
+            GlobalFFOptions.Configure(options => options.BinaryFolder = "./bin");
+            var options = GlobalFFOptions.Current;
+            if (!await checkFFMPEG(options)) {
+                OdnoException oe = new OdnoException(new Exception("FFmpeg could not be found or installed. Closing..."));
+                OdnoException.CriticalException(oe, oe.Message, "FfmpegMngr.InitFFMPEG");
+            }
+            return true;
+        }
+
+        private static async Task<bool> checkFFMPEG(FFOptions options) {
+            try
+            {
+                FFMpegCore.Helpers.FFMpegHelper.VerifyFFMpegExists(options);
+                return true;
+            }
+            catch (FFMpegException fe) {
+                var res = MessageBox.Show($"{fe.Message}" +
+                    $"\nFFMpeg is required for ODNO. " +
+                    $" FFmpeg is the leading multimedia framework, able to decode, encode, transcode, mux, demux, stream, filter and play pretty much anything that humans and machines have created." +
+                    $"\nYou can read more about FFmpeg here: https://ffmpeg.org/about.html" +
+                    $"\n\nODNO can download FFMpeg for you (requires internet connection)." +
+                    $"\nProceed?", "ODNO INFO", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+
+                if (res == DialogResult.No) {
+                    Application.Exit();
+                }
+
+                var b = await FFMpegDownloader.DownloadBinaries();
+                return b.Any();
+            }
+            
         }
 
         /// <summary>
