@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OdnoWindowsApp.CDLib;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
@@ -18,6 +19,8 @@ namespace OdnoWindowsApp.Core
         public static string dvdRoot = "";
         public static DriveInfo? _drive;
         public static List<string> CDROMS = new List<string>();
+
+        private static readonly CDDrive _cdDrive = new();
         
         public static bool LoadDisc(string? reloadStr = null)
         {
@@ -36,7 +39,7 @@ namespace OdnoWindowsApp.Core
                             {
                                 tracks = drive.RootDirectory.GetFiles();
 
-                                drivePath = drive.Name.Replace("\\", "");
+                                drivePath = drive.Name.Split(":").First();
                                 dvdRoot = $"({drivePath}) {drive.VolumeLabel}";
                                 isReady = drive.IsReady;
                                 _drive = drive;
@@ -68,27 +71,32 @@ namespace OdnoWindowsApp.Core
         }
 
         public static bool OpenClose() {
-            if (string.Empty.Equals(drivePath)) {
-                return false;
+            if (_cdDrive.Toggler) { _cdDrive.Close(); }
+            else {
+                if (string.Empty.Equals(drivePath))
+                {
+                    return false;
+                }
+                
+                _cdDrive.Open(char.Parse(drivePath)); 
             }
 
-            Ejector.Eject(drivePath);
-
-            Thread.Sleep(500);
-            
-            bool reloaded = watchForDrive(drivePath);
-
-            return reloaded;
+            isReady = watchForDrive(drivePath);
+            return isReady;
         }
 
         public static bool watchForDrive(string drive) {
+            Thread.Sleep(1000); //give it a sec
             int start = DateTime.Now.Second;
             int end = 0;
-            bool run = true;
-            while (run) {
+            while (true)
+            {
                 try
                 {
-                    run = !DriveInfo.GetDrives().Where(d => d.DriveType.Equals(DriveType.CDRom)).Where(d => d.IsReady).Any();
+                    if (_cdDrive.IsCDReady())
+                    {
+                        return true;
+                    }
 
                     Thread.Sleep(250);
 
@@ -102,79 +110,21 @@ namespace OdnoWindowsApp.Core
                 {
                     OdnoException.CriticalException(new OdnoException(ioe), ioe.Message, "CDROMDrive.watchForDrive");
                 }
-                catch (TimeoutException te) {
+                catch (TimeoutException te)
+                {
                     OdnoException.HandleException(new OdnoException(te), te.Message, "CDROMDrive.watchForDrive");
                     return false;
                 }
             }
-            return true;
         }
 
-        private class Ejector {
-            // Constants used in DLL methods
-            const int OPEN_EXISTING = 3;
-            const uint GENERIC_READ = 0x80000000;
-            const uint GENERIC_WRITE = 0x40000000;
-            const uint IOCTL_STORAGE_EJECT_MEDIA = 2967560;
-            const uint FILE_SHARE_READ = 0x00000001; 
-            const uint FILE_SHARE_WRITE = 0x00000002;
-
-            [DllImport("kernel32")]
-            private static extern nint CreateFile(
-                string filename, uint desiredAccess,
-                uint shareMode, nint securityAttributes,
-                int creationDisposition, int flagsAndAttributes,
-                nint templateFile
-            );
-
-            [DllImport("kernel32")]
-            private static extern int DeviceIoControl
-                (nint deviceHandle, uint ioControlCode,
-                 nint inBuffer, int inBufferSize,
-                 nint outBuffer, int outBufferSize,
-                 ref int bytesReturned, nint overlapped);
-
-            [DllImport("kernel32")]
-            private static extern int CloseHandle(nint handle);
-
-            internal static void Eject(string drive) {
-                bool isException = false;
-                string f = $"\\\\.\\{drive}";
-                nint handle = CreateFile(f, GENERIC_READ | GENERIC_WRITE,
-                    FILE_SHARE_READ | FILE_SHARE_WRITE, nint.Zero, OPEN_EXISTING, 0, nint.Zero);
-
-                try
-                {
-                    if ((long)handle == -1)
-                    {
-                        isException = true;
-                        throw new IOException($"Unable to open {drive}...");
-                    }
-                    int holder = 0;
-                    int success = DeviceIoControl(handle, IOCTL_STORAGE_EJECT_MEDIA, nint.Zero, 0,
-                        nint.Zero, 0, ref holder, nint.Zero);
-
-                    if (success == 0)
-                    {
-                        
-                        throw new IOException("Eject failed");
-                    }
-                }
-                catch (IOException io)
-                {
-                    //handle
-                    isException = true;
-                    OdnoException.HandleException(new OdnoException(io.Message, io), "Problem w/CDROMDrive", "CDROMDrive.Ejector.Eject");
-                }
-
-                finally
-                {
-                    CloseHandle(handle);
-                    if (isException) {
-                        Application.Exit();
-                    }
-                }
+        public static void Rip(string dest = "") {
+            _cdDrive.ReadDisc(char.Parse(drivePath));
+            
+            if ("".Equals(dest)) {
+                dest = GlobalConstants.OdnoPath;
             }
+            _cdDrive.RipContents(dest);
         }
     }
 }
