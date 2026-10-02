@@ -166,7 +166,7 @@ namespace OdnoWindowsApp
             artistTextBox.Text = response.artist;
             genreComboBox.DataSource = response.tags.tag.Select(x => x.name).ToArray();
 
-            var release = response.wiki.summary;
+            var release_info = response.wiki == null ? "" : response.wiki.summary;
 
             if (imgMap.Any())
             {
@@ -186,13 +186,13 @@ namespace OdnoWindowsApp
             string albumImg = response.image[4].text;
             albumPb.Load(albumImg);
 
-            if (!_formSrv.GetSongsToRender(response, albumImg).Any()) { 
+            if (!_formSrv.GetSongsToRender(response, albumImg).Any())
+            {
                 MessageBox.Show("Failed to render songs...", "ODNO ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             songs = _formSrv.GetSongsToRender(response, albumImg);
-
         }
 
         private bool CDLoader()
@@ -207,6 +207,8 @@ namespace OdnoWindowsApp
                 cdAlbumNameBox.Enabled = true;
                 cdArtistNameBox.Enabled = true;
 
+                ripBtn.Enabled = true;
+
                 return true;
             }
 
@@ -220,7 +222,7 @@ namespace OdnoWindowsApp
         {
             /** TODO:
              *  Create pref file if it doesn't exist ; init file ; if exists read file contents into a hashmap.         [ DONE ]
-             *  Check if FFMPEG is installed ; if not, install it with winget ; save "installed = true" to file         [ NOT STARTED ]
+             *  Check if FFMPEG is installed ; if not, install it with winget ; save "installed = true" to file         [ DONE ]
              *  find odno dir in user music folder ; if it doesn't exist, create it ; save location to file             [ DONE ]
              *  
              */
@@ -271,7 +273,7 @@ namespace OdnoWindowsApp
                 lockButtons(false, GlobalConstants.AUTO);
                 return;
             }
-
+            
             Form loading = _viewDlgs.ShowLoading();
             loading.Show();
 
@@ -348,12 +350,22 @@ namespace OdnoWindowsApp
             ejectCloseBtn.Enabled = true;
 
             cdBox.Enabled = driveFound;
+            ripBtn.Enabled = driveFound;
         }
 
-        private void ripBtn_Click(object sender, EventArgs e)
+        private async void ripBtn_Click(object sender, EventArgs e)
         {
+            Form ripping = _viewDlgs.ShowLoading("Ripping\n This could take awhile...");
+            ripping.Show();
             if (!(albumProvided & artistProvided & CDROMDrive.isReady))
             {
+                if (!albumProvided || !artistProvided) {
+                    MessageBox.Show("Enter Album Info to proceed.", "ODNO INFO", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+
+                if (!CDROMDrive.isReady) {
+                    MessageBox.Show("Error preparing drive.", "ODNO ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
                 return;
             }
 
@@ -362,8 +374,9 @@ namespace OdnoWindowsApp
 
             string dir = $"{albumName}-{artistName}";
             string albumDir = string.IsNullOrEmpty(GlobalConstants.OdnoPath) ? string.Empty : $"{GlobalConstants.OdnoPath}\\{dir}";
-
-            _formSrv.Rip(albumDir);
+            
+            await _formSrv.Rip(albumDir);
+            ripping.Close();
 
             albumFolderTb.Text = albumDir;
 
@@ -427,7 +440,10 @@ namespace OdnoWindowsApp
                 _formSrv.Redo(albumFolderTb.Text);
             }
 
-            string[] albumFiles = Directory.GetFiles(albumFolderTb.Text);
+            var albumFiles = Directory.GetFiles(albumFolderTb.Text).ToList();
+
+            albumFiles.Sort(new Util.TrackNameComparer());
+
             bool tracksReady = (Directory.Exists(GlobalConstants.OdnoPath) && albumFiles.Any());
             if (string.Empty.Equals(artistTextBox.Text) || (string.Empty.Equals(albumTextBox.Text)
                 || !tracksReady))

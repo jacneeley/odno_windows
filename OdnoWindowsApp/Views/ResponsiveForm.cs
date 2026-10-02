@@ -11,7 +11,8 @@ namespace OdnoWindowsApp.Views
         public ResponsiveForm() {
             this.AutoScaleMode = AutoScaleMode.Dpi;
             this.AutoScaleDimensions = new SizeF(96F, 96F);
-            this.MinimumSize = new Size(400, 300);
+            this.MinimumSize = new Size(40, 25);
+            this.MaximizeBox = false;
         }
     }
 }

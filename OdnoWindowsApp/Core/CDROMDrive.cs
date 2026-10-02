@@ -118,13 +118,24 @@ namespace OdnoWindowsApp.Core
             }
         }
 
-        public static void Rip(string dest = "") {
-            _cdDrive.ReadDisc(char.Parse(drivePath));
-            
-            if ("".Equals(dest)) {
-                dest = GlobalConstants.OdnoPath;
+        public static async Task Rip(string dest = "") {
+            try
+            {
+                _cdDrive.ReadDisc(char.Parse(drivePath));
+
+                if ("".Equals(dest))
+                {
+                    dest = GlobalConstants.OdnoPath;
+                }
+
+                if (!await _cdDrive.RipContents(dest))
+                {
+                    throw new IOException("Track data was not present or could not be accessed...");
+                }
             }
-            _cdDrive.RipContents(dest);
+            catch (Exception e) {
+                throw;
+            }
         }
     }
 }

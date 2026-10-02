@@ -19,7 +19,7 @@ namespace OdnoWindowsApp.Model
             [property: JsonProperty("url")] string url,
             [property: JsonProperty("name")] string name,
             [property: JsonProperty("listeners")] string listeners,
-            [property: JsonProperty("wiki")] Wiki wiki,
+            [property: JsonProperty("wiki")] Wiki? wiki,
             [property: JsonProperty("error")] string error,
             [property: JsonProperty("date")] int? year
          );
@@ -70,9 +70,9 @@ namespace OdnoWindowsApp.Model
         );
 
         public record Wiki(
-            [property: JsonProperty("published")] string published,
-            [property: JsonProperty("summary")] string summary,
-            [property: JsonProperty("content")] string content
+            [property: JsonProperty("published")] string? published,
+            [property: JsonProperty("summary")] string? summary,
+            [property: JsonProperty("content")] string? content
         );
     }
 }

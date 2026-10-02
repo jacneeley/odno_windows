@@ -12,7 +12,6 @@ namespace OdnoWindowsApp.Core
 {
     internal class PwrShellMngr
     {
-        private static readonly string rip = "C:\\Users\\jake\\source\\repos\\OdnoWindowsApp\\OdnoWindowsApp\\scripts\\rip.ps1";
         private static readonly string PWRSHEXE = "powershell.exe";
         private static readonly string FFMPEG = "ffmpeg.exe";
         private class ProcessStartInfoSrv { 
@@ -69,11 +68,6 @@ namespace OdnoWindowsApp.Core
             var stdErr = process.StandardError.ReadToEnd();
 
             process.WaitForExit();
-            //TODO: Figure this shit out... >:(
-            //if (process.ExitCode != 0)
-            //{
-            //    HandleFailedProcess(process);
-            //}
         }
 
         /// <summary>

@@ -2,6 +2,7 @@
 using FFMpegCore.Exceptions;
 using OdnoWindowsApp.Core;
 using OdnoWindowsApp.Model;
+using System.CodeDom;
 using System.Text.RegularExpressions;
 using static OdnoWindowsApp.Model.LastFmObjectModel;
 
@@ -18,21 +19,24 @@ namespace OdnoWindowsApp.Services
             _fetcher = new Fetcher();
         }
 
-        //public FormSrv(Fetcher fetcher) {
-        //    _fetcher = fetcher;
-        //}
+        private string replaceInvalidChars(char[] invalid, string name) {
+            return new string(name.Where(c => !invalid.Contains(c)).ToArray());
+        }
 
         public List<Song> GetSongsToRender(LastFmObjectModel.Album response, string albumImg = "") {
             var songs = new List<Song>();
+
+            char[] invalid = Path.GetInvalidFileNameChars();
             
             try
             {
                 for (int i = 0; i < response.tracks.track.Count; i++)
                 {
+                    
                     var track = response.tracks.track[i];
-                    string name = Regex.Replace(track.name, "[^a-zA-Z0-9_ ]", "");
-                    string artist = Regex.Replace(response.artist, "[^a-zA-Z0-9_ ]", "");
-                    string album = Regex.Replace(response.name, "[^a-zA-Z0-9_ ]", "");
+                    string name = replaceInvalidChars(invalid, track.name);
+                    string artist = Regex.Replace(response.artist, GlobalConstants.RgxPattern, "");
+                    string album = Regex.Replace(response.name, GlobalConstants.RgxPattern, "");
                     Song song = new Song.SongBuilder(name, artist, album)
                         .AlbumArtist(artist)
                         .Cover(albumImg)
@@ -96,7 +100,7 @@ namespace OdnoWindowsApp.Services
             {
                 var options = new ParallelOptions()
                 {
-                    MaxDegreeOfParallelism = ffmpegInstances.Count()
+                    MaxDegreeOfParallelism = ffmpegInstances.Count() / 2
                 };
 
                 await Parallel.ForEachAsync(ffmpegInstances, options, async (instance, ct) => {
@@ -117,40 +121,54 @@ namespace OdnoWindowsApp.Services
             return true;
         }
 
-        public void Rip(string albumDir)
+        public async Task<bool> Rip(string albumDir)
         {
             _albumDir = albumDir;
             _tmp = $"{albumDir}\\completed";
-            
-            if (String.Empty.Equals(albumDir))
-            {
-                MessageBox.Show("odno folder could not be found.", "odno ERROR");
-                return;
-            }
-
-            if (!Directory.Exists(albumDir))
-            {
-                try
+            try {
+                if (String.Empty.Equals(albumDir))
                 {
-                    if (!Directory.CreateDirectory(albumDir).Exists)
+                    MessageBox.Show("odno folder could not be found.", "odno ERROR");
+                    return false;
+                }
+
+                if (!Directory.Exists(albumDir))
+                {
+                    try
                     {
-                        throw new DirectoryNotFoundException(albumDir);
+                        Directory.CreateDirectory(albumDir);
+                    }
+                    catch {
+                        throw new IOException("Something went wrong creating: " + albumDir.Split("\\").Last());
                     }
                 }
-                catch (DirectoryNotFoundException dnfe)
+                else
                 {
-                    MessageBox.Show($"Failed to create Directory - {dnfe.Message}");
-                    return;
-                }
-                catch
-                {
-                    //caller doesn't have access
-                    MessageBox.Show("An Unexpected error occurred. odno folder could not be created. Try running odno with admin privileges.", "odno ERROR");
-                    return;
-                }
-            }
+                    var files = Directory.GetFiles(albumDir);
 
-            PwrShellMngr.OpenWMPlayerRip();
+                    foreach (var file in files)
+                    {
+                        File.Delete(file);
+                    }
+                }
+
+                await CDROMDrive.Rip(albumDir);
+
+                return true;
+
+            }
+            catch (IOException ioe)
+            {
+                OdnoException.HandleException(new OdnoException(ioe), ioe.Message, "FormSrv.Rip");
+                MessageBox.Show($"Failed to create Directory - {ioe.Message}");
+                return false;
+            }
+            catch (Exception e) {
+                //caller doesn't have access
+                OdnoException.HandleException(new OdnoException(e), e.Message, "FormSrv.Rip");
+                MessageBox.Show("An Unexpected error occurred. odno folder could not be created. Try running odno with admin privileges.", "odno ERROR");
+                return false;
+            }
         }
 
         public bool CleanAndMove(string albumDir) {

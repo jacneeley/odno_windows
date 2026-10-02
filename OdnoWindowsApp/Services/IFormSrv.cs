@@ -10,7 +10,7 @@ namespace OdnoWindowsApp.Services
 {
     internal interface IFormSrv
     {
-        void Rip(string albumDir);
+        Task<bool> Rip(string albumDir);
         Task<bool> Save(string albumFolder, string imgUrl, string bitrate, List<TrackFileMngr> ffmpegCmds);
         Task<ResponseBody> GetAlbumFromLastFM(string artist, string album);
         Task<ResponseBody> FetchAlbum(string[] albumSource);

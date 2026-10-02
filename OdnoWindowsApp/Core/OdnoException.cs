@@ -63,7 +63,7 @@ namespace OdnoWindowsApp.Core
 
 			}
 			else {
-                _odnoLogger.LogCritical(new OdnoException("Something bad and unexpected happened. So bad a proper exception was not captured...", new Exception(desc)), desc);
+                _odnoLogger.LogCritical(new OdnoException("Something bad and unexpected happened, so bad a proper exception was not captured...", new Exception(desc)), desc);
             }
 
 			MessageBox.Show("Catastrophic Error Occurred. This program will exit to preserve any data.");

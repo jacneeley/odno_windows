@@ -110,6 +110,7 @@
             debugBtn.TabIndex = 0;
             debugBtn.Text = "Debugger";
             debugBtn.UseVisualStyleBackColor = true;
+            debugBtn.Visible = false;
             debugBtn.Click += button1_Click;
             // 
             // menuStrip1
@@ -131,14 +132,14 @@
             // resetToolStripMenuItem
             // 
             resetToolStripMenuItem.Name = "resetToolStripMenuItem";
-            resetToolStripMenuItem.Size = new Size(180, 22);
+            resetToolStripMenuItem.Size = new Size(148, 22);
             resetToolStripMenuItem.Text = "Reset (ctrl + r)";
             resetToolStripMenuItem.Click += resetToolStripMenuItem_Click;
             // 
             // quitctrlQToolStripMenuItem
             // 
             quitctrlQToolStripMenuItem.Name = "quitctrlQToolStripMenuItem";
-            quitctrlQToolStripMenuItem.Size = new Size(180, 22);
+            quitctrlQToolStripMenuItem.Size = new Size(148, 22);
             quitctrlQToolStripMenuItem.Text = "Quit (ctrl + q)";
             quitctrlQToolStripMenuItem.Click += quitctrlQToolStripMenuItem_Click;
             // 
@@ -176,6 +177,7 @@
             viewToolStripMenuItem.Name = "viewToolStripMenuItem";
             viewToolStripMenuItem.Size = new Size(44, 20);
             viewToolStripMenuItem.Text = "View";
+            viewToolStripMenuItem.Visible = false;
             // 
             // appearanceToolStripMenuItem
             // 
@@ -208,6 +210,7 @@
             infoToolStripMenuItem.Name = "infoToolStripMenuItem";
             infoToolStripMenuItem.Size = new Size(40, 20);
             infoToolStripMenuItem.Text = "Info";
+            infoToolStripMenuItem.Visible = false;
             // 
             // showHelpF1ToolStripMenuItem
             // 

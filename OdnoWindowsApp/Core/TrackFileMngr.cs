@@ -75,5 +75,7 @@ namespace OdnoWindowsApp.Core
                 throw new OdnoException(fe);
             }
         }
+
+        public Song Song { get;}
     }
 }

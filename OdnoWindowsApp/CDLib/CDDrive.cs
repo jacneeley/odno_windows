@@ -111,67 +111,105 @@ namespace OdnoWindowsApp.CDLib
             }
         }
 
-        protected struct TrackData
-        {
-            public string Track { get; set; }
-            public byte[] Data { get; set; }
-            public int DataSize { get; set; }
-        }
+        //protected struct TrackData
+        //{
+        //    public string Track { get; set; }
+        //    public byte[] Data { get; set; }
+        //    public int DataSize { get; set; }
+        //}
 
-        protected TrackData RipTrack(int trackNum)
-        {
+        //protected TrackData RipTrack(int trackNum)
+        //{
+        //    try
+        //    {
+        //        string track = $"{trackNum}_Track.wav";
+
+        //        byte[] dummy = null;
+        //        uint totalSize = 0;
+
+        //        ReadTrack(trackNum, dummy, ref totalSize, 0, 0, null);
+
+        //        if (totalSize == 0) {
+        //            throw new IOException($"Failed @ Track {trackNum} could not be sized (empty or invalid).");
+        //        }
+
+        //        byte[] buffer = new byte[totalSize];
+        //        int offset = 0;
+
+        //        int result = ReadTrack(
+        //            trackNum,
+        //            (sender, e) =>
+        //            {
+        //                int chunkSize = (int)e.DataSize;
+
+        //                if (offset + chunkSize > buffer.Length) {
+        //                    throw new ArgumentException("buffer is too small.");
+        //                }
+
+        //                Buffer.BlockCopy(e.Data, 0, buffer, offset, chunkSize);
+        //                offset += chunkSize;
+        //            },
+        //            (sender, e) =>
+        //            {
+        //                // e has Bytes2Read and BytesRead (and CancelRead) on it.
+        //                // e.g. report progress, allow cancellation:
+        //                // e.CancelRead = userCancelled;
+                        
+        //            });
+
+        //        if (result < 0)
+        //        {
+        //            throw new IOException("Track: " + trackNum + " could not be read...");
+        //        }
+
+        //        if (offset < buffer.Length) { 
+        //            Array.Resize(ref buffer, offset);
+        //        }
+
+        //        return new TrackData { Track = track, Data = buffer, DataSize = offset };
+
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        // TODO: log e
+        //        throw;
+        //    }
+        //}
+
+        protected async Task<bool> RipTrack(string dest, int trackNum, WaveFormat format) {
             try
             {
                 string track = $"{trackNum}_Track.wav";
 
-                byte[] dummy = null;
-                uint totalSize = 0;
+                using WaveFileWriter writer = new WaveFileWriter(Path.Combine(dest, track), format);
 
-                ReadTrack(trackNum, dummy, ref totalSize, 0, 0, null);
+                return await Task.Run(async () => {
+                    long bytesWritten = 0;
 
-                if (totalSize == 0) {
-                    throw new IOException($"Failed @ Track {trackNum} could not be sized (empty or invalid).");
-                }
+                    int res = ReadTrack(
+                        trackNum,
+                        (sender, e) =>
+                        {
+                            writer.Write(e.Data, 0, (int)e.DataSize);
+                            bytesWritten += e.DataSize;
+                        },
+                        (sender, e) =>
+                        { /* optional: update progress */});
 
-                byte[] buffer = new byte[totalSize];
-                int offset = 0;
-
-                int result = ReadTrack(
-                    trackNum,
-                    (sender, e) =>
+                    if (res < 0)
                     {
-                        int chunkSize = (int)e.DataSize;
+                        throw new IOException("Track: " + trackNum + " could not be read from CD...");
+                    }
 
-                        if (offset + chunkSize > buffer.Length) {
-                            throw new ArgumentException("buffer is too small.");
-                        }
-
-                        Buffer.BlockCopy(e.Data, 0, buffer, offset, chunkSize);
-                        offset += chunkSize;
-                    },
-                    (sender, e) =>
-                    {
-                        // e has Bytes2Read and BytesRead (and CancelRead) on it.
-                        // e.g. report progress, allow cancellation:
-                        // e.CancelRead = userCancelled;
-                        
-                    });
-
-                if (result < 0)
-                {
-                    throw new IOException("Track: " + trackNum + " could not be read...");
-                }
-
-                if (offset < buffer.Length) { 
-                    Array.Resize(ref buffer, offset);
-                }
-
-                return new TrackData { Track = track, Data = buffer, DataSize = offset };
-
+                    return res > 0;
+                });
             }
-            catch (Exception e)
+            catch (ArgumentException ae)
             {
-                // TODO: log e
+                throw new IOException("Track: " + trackNum + " could not be written to file...", ae);
+            }
+            catch (Exception e) {
+                //log
                 throw;
             }
         }
@@ -613,8 +651,9 @@ namespace OdnoWindowsApp.CDLib
         }
 
         //Implentation
-        public async void RipContents(string dest)
+        public async Task<bool> RipContents(string dest)
         {
+            bool result = false;
             try
             {
                 if (ReadToc())
@@ -624,38 +663,13 @@ namespace OdnoWindowsApp.CDLib
                     int firstTrack = Toc.FirstTrack;
                     int lastTrack = Toc.LastTrack;
 
-                    var trackList = new List<TrackData>();
+                    WaveFormat format = new WaveFormat();
 
                     for (int trackNum = firstTrack; trackNum <= lastTrack; trackNum++)
                     {
-                        //var trackData = RipTrack(trackNum);
-                        trackList.Add(RipTrack(trackNum));
+                        result = await RipTrack(dest, trackNum, format);
                     }
 
-                    var options = new ParallelOptions()
-                    {
-                        MaxDegreeOfParallelism = trackList.Count() / 2
-                    };
-
-                    WaveFormat format = new WaveFormat();
-
-                    await Parallel.ForEachAsync(trackList, options, async (trackInstance, ct) =>
-                    {
-                        try
-                        {
-                            //await File.WriteAllBytesAsync(Path.Combine(dest, trackInstance.Track), trackInstance.Data, ct);
-                            using (WaveFileWriter writer = new WaveFileWriter(Path.Combine(dest, trackInstance.Track), format))
-                            {
-                                writer.Write(trackInstance.Data, 0, trackInstance.DataSize);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            throw new IOException(ex.Message, ex);
-                        }
-                    });
-
-                    trackList.Clear();
                     UnlockCD();
                 }
             }
@@ -668,6 +682,7 @@ namespace OdnoWindowsApp.CDLib
             }
             
             this.Dispose();
+            return result;
         }
 
         ~CDDrive() {

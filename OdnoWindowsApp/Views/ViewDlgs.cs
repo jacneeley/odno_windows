@@ -16,8 +16,6 @@ namespace OdnoWindowsApp.Views
 
         private FormSrv _srv;
         
-        private static Rectangle _bounds = Screen.PrimaryScreen.Bounds;
-        
         public ViewDlgs(FormSrv srv) {
             _srv = srv;
         }
@@ -68,23 +66,28 @@ namespace OdnoWindowsApp.Views
             };
 
             Album? responseJson = null;
+            var loading = ShowLoading("Fetching...");
             search.Click += async (sender, e) => {
                 if (artistTb.Text.Length == 0 || albumTb.Text.Length == 0)
                 {
                     MessageBox.Show("Album & Artist cannot be blank.");
                 }
-                else { 
+                else {
+                    loading.Show();
                     ResponseBody response = await _srv.GetAlbumFromLastFM(artistTb.Text, albumTb.Text);
                     if (!response.IsSuccess) {
+                        loading.Close();
                         MessageBox.Show(response.ResponseJson.error);
                         return;
                     }
 
+                    loading.Close();
+
                     var json = response.ResponseJson;
                     var confirmation = MessageBox.Show("Is the following correct:\n" +
-                        $"{json.name}\n" +
-                        $"{json.artist}\n" +
-                        $"debug:{json}", "Confirm", MessageBoxButtons.YesNo,
+                        $"Album: {json.name}\n" +
+                        $"Artist: {json.artist}\n" +
+                        $"Release Date:{json.year}", "Confirm", MessageBoxButtons.YesNo,
                                  MessageBoxIcon.Question);
                     
                     if (confirmation == DialogResult.Yes)
@@ -113,60 +116,21 @@ namespace OdnoWindowsApp.Views
         public List<Song> showTracks(List<Song> songs, string album, string artist)
         {
             bool edited = false;
-            Form trackViewDlg = new Form()
-            {
-                Width = (int)(_bounds.Width * .33),
-                Height = (int)(_bounds.Height * .66),
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                Text = $"{album} - {artist}",
-                StartPosition = FormStartPosition.CenterScreen,
-                AutoScroll = true
-            };
-            Label trackLabel = new Label()
-            {
-                Top = 25,
-                Left = 50,
-                Text = "Tracks",
-                Width = 50
-            };
-            Button edit = new Button() {
-                Top = 50,
-                Left = 400,
-                Text = "Edit",
-                Width = 100
-            };
-            Button done = new Button()
-            {
-                Top = 50,
-                Left = 150,
-                Text = "Done",
-                Width = 100,
-                Visible = false
-            };
-            Button reset = new Button()
-            {
-                Top = 50,
-                Left = 25,
-                Text = "Reset",
-                Width = 100,
-                Visible = false
-            };
-            Button OK = new Button()
-            {
-                Top = 500,
-                Text = "OK",
-                Left = 250,
-                Width = 100,
-                DialogResult = DialogResult.None
-            };
-            DataGridView tracksView = new DataGridView()
-            {
-                Top = 100,
-                Left = 50,
-                Width = 400,
-                Height = 400,
-                BorderStyle = BorderStyle.FixedSingle
-            };
+
+            ResponsiveDialog TrackDlg = new ResponsiveDialog(true, "SMALL");
+
+            Label trackLabel = TrackDlg.ResponsiveLabel("Tracks:", new int[2] { 25, 25 });
+
+            Button edit = TrackDlg.ResponsiveButton(new int[2] { 50, 25 }, "Edit");
+
+            Button done = TrackDlg.ResponsiveButton(new int[2] { edit.Top, edit.Right + 25 }, "Done");
+
+            Button reset = TrackDlg.ResponsiveButton(new int[2] { edit.Top, done.Right + 25 }, "Cancel");
+
+            DataGridView tracksView = TrackDlg.ResponsiveDataGridView(new int[2] { reset.Bottom + 25, 25 });
+
+            Button OK = TrackDlg.ResponsiveButton(new int[2] { tracksView.Bottom + 25, ((TrackDlg.Width / 2) - 50) }, "OK");
+
             var source = new BindingSource();
             
             List<TracksModel> tracks = new List<TracksModel>();
@@ -180,7 +144,8 @@ namespace OdnoWindowsApp.Views
             var prev = source;
             tracksView.ReadOnly = true;
 
-            edit.Click += (sender, e) => { 
+            edit.Click += (sender, e) => {
+                prev = source;
                 done.Visible = true;
                 reset.Visible = true;
                 tracksView.ReadOnly = false;
@@ -199,13 +164,14 @@ namespace OdnoWindowsApp.Views
             reset.Click += (sender, e) => {
                 //TODO: figure this shit out...
                 //tracksView.Rows.Clear();
-                tracksView.DataSource = prev;
-                tracksView.Refresh();
-                tracksView.ReadOnly = true;
-                edit.Enabled = true;
-                reset.Visible = false;
-                done.Visible = false;
-                OK.Enabled = true;
+                //tracksView.DataSource = prev;
+                //tracksView.ReadOnly = true;
+                //edit.Enabled = true;
+                //reset.Visible = false;
+                //done.Visible = false;
+                //OK.Enabled = true;
+                //tracksView.Refresh();
+                TrackDlg.Close();
             };
 
             OK.Click += (sender, e) => {
@@ -222,22 +188,25 @@ namespace OdnoWindowsApp.Views
                     songs.OrderBy(s => s.TrackNum);
 
                     OK.DialogResult = DialogResult.OK;
-                    trackViewDlg.Close();
+                    TrackDlg.Close();
                 }
                 else {
-                    trackViewDlg.Close();
+                    TrackDlg.Close();
                 }
             };
 
-            trackViewDlg.Controls.Add(trackLabel);
-            trackViewDlg.Controls.Add(tracksView);
-            trackViewDlg.Controls.Add(edit);
-            trackViewDlg.Controls.Add(done);
-            trackViewDlg.Controls.Add(reset);
-            trackViewDlg.Controls.Add(OK);
-            trackViewDlg.AcceptButton = OK;
+            TrackDlg.Controls.Add(trackLabel);
+            TrackDlg.Controls.Add(tracksView);
+            TrackDlg.Controls.Add(edit);
+            TrackDlg.Controls.Add(done);
+            TrackDlg.Controls.Add(reset);
+            TrackDlg.Controls.Add(OK);
+            TrackDlg.AcceptButton = OK;
 
-            trackViewDlg.ShowDialog();
+            done.Visible = false;
+            reset.Visible = false;
+
+            TrackDlg.ShowDialog();
 
             return songs;
         }
@@ -247,50 +216,19 @@ namespace OdnoWindowsApp.Views
             bool pathChange = false;
             bool CDROMChange = false;
 
-            ResponsiveDialog settingsDlg = new ResponsiveDialog(new Size(800, 400), new Size(400, 200));
+            ResponsiveDialog settingsDlg = new ResponsiveDialog(true, "SMALL");
 
-            Label SaveLabel = new Label()
-            {
-                Top = 25,
-                Left = 50,
-                Text = "Save Location",
-                Width = (int)(settingsDlg.Width * .2),
-            };
+            Label SaveLabel = settingsDlg.ResponsiveLabel("save location", new int[2] { 25, ((settingsDlg.Width / 2) - 150) });
 
-            TextBox SaveTxtBox = new TextBox() { 
-            
-                Top = 50,
-                Left = 50,
-                Text = SettingsMngr.settings["odno_tunes_path"],
-                Width = (int)(settingsDlg.Width * .33),
-            };
+            TextBox SaveTxtBox = settingsDlg.ResponsiveTextBox(new int[2] { SaveLabel.Bottom + 5, ((settingsDlg.Width / 2) - 150) }, SettingsMngr.settings["odno_tunes_path"]);
 
-            Label DriveLabel = new Label()
-            {
-                Top = 80,
-                Left = 50,
-                Text = "Preferred CDROM",
-                Width = (int)(settingsDlg.Width * .33),
-            };
+            Button BrowseBtn = settingsDlg.ResponsiveButton(new int[2] { SaveTxtBox.Top, SaveTxtBox.Right + 5 }, "Browse");
 
-            ComboBox CDROMCombo = new ComboBox()
-            {
+            Label DriveLabel = settingsDlg.ResponsiveLabel("Preferred CDROM", new int[2] { SaveTxtBox.Bottom + 30, ((settingsDlg.Width / 2) - 150) });
 
-                Top = 105,
-                Left = 50,
-                Text = SettingsMngr.settings["default_cdrom"],
-                DataSource = CDROMDrive.CDROMS,
-                Width = (int)(settingsDlg.Width * .33),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
+            ComboBox CDROMCombo = settingsDlg.ResponsiveComboBox(new int[2] { DriveLabel.Bottom + 5, ((settingsDlg.Width / 2) - 150) }, SettingsMngr.settings["default_cdrom"], CDROMDrive.CDROMS);
 
-            Button save = new Button()
-            {
-                Top = 150,
-                Left = (int)(settingsDlg.Width * .5),
-                Width = (int)(settingsDlg.Width * .15),
-                Text = "OK",
-            };
+            Button save = settingsDlg.ResponsiveButton(new int[2] { CDROMCombo.Bottom + 50, ((settingsDlg.Width / 2) - 50) }, "OK");
 
             SaveTxtBox.KeyPress += (s, e) =>
             {
@@ -300,6 +238,26 @@ namespace OdnoWindowsApp.Views
             CDROMCombo.SelectedValueChanged += (s, e) =>
             {
                 CDROMChange = !CDROMCombo.Text.Equals(SettingsMngr.settings["default_cdrom"]);
+            };
+
+            BrowseBtn.Click += (s, e) =>
+            {
+                using (FolderBrowserDialog fbd = new FolderBrowserDialog())
+                {
+                    if (Directory.Exists(GlobalConstants.OdnoPath))
+                    {
+                        fbd.InitialDirectory = GlobalConstants.OdnoPath;
+                    }
+                    else
+                    {
+                        fbd.InitialDirectory = $"{GlobalConstants.UserPath}\\Music";
+                    }
+
+                    if (fbd.ShowDialog() == DialogResult.OK)
+                    {
+                        SaveTxtBox.Text = fbd.SelectedPath;
+                    }
+                }
             };
 
             save.Click += (s, e) =>
@@ -325,6 +283,7 @@ namespace OdnoWindowsApp.Views
             settingsDlg.Controls.Add(SaveTxtBox);
             settingsDlg.Controls.Add(DriveLabel);
             settingsDlg.Controls.Add(CDROMCombo);
+            settingsDlg.Controls.Add(BrowseBtn);
             settingsDlg.Controls.Add(save);
             settingsDlg.AcceptButton = save;
 
@@ -333,10 +292,7 @@ namespace OdnoWindowsApp.Views
         }
 
         public static bool OpenClose() {
-            ResponsiveDialog diskDlg = new ResponsiveDialog(new Size(150, 80), new Size(75, 40))
-            {
-                Text = "Close Disk Drive To Continue."
-            };
+            ResponsiveDialog diskDlg = new ResponsiveDialog(false, "TINY");
 
             bool done = false;
 
@@ -346,32 +302,22 @@ namespace OdnoWindowsApp.Views
                 diskDlg.Close();
             };
 
+            diskDlg.Controls.Add(diskDlg.CenterLabel("Close CDROM to continue."));
+
             diskDlg.ShowDialog();
 
             return done;
         }
 
-        public ResponsiveDialog ShowLoading() {
-            ResponsiveDialog loadingDlg = new ResponsiveDialog(new Size(150, 80), new Size(75, 40));
+        public ResponsiveDialog ShowLoading(string label = "") {
+            ResponsiveDialog loadingDlg = new ResponsiveDialog(false, "TINY");
 
-            Label loading = new Label() {
-                Dock = DockStyle.Fill,
-                Text = "Loading...",
-                TextAlign = ContentAlignment.MiddleCenter,
-                Width = (int)(loadingDlg.Width * 0.2),
-            };
+            if ("".Equals(label)) {
+                label = "loading...";
+            }
 
-            ProgressBar progressBar = new ProgressBar()
-            {
-                Dock = DockStyle.Bottom,
-                Height = 20,
-                Style = ProgressBarStyle.Marquee,
-                MarqueeAnimationSpeed = 1
-            };
-            loadingDlg.Controls.Add(progressBar);
-
-            loadingDlg.Controls.Add(loading);
-            loadingDlg.Controls.Add(progressBar);
+            loadingDlg.Controls.Add(loadingDlg.CenterLabel(label));
+            loadingDlg.Controls.Add(loadingDlg.MarqueeProgressBar(DockStyle.Bottom));
 
             return loadingDlg;
         }

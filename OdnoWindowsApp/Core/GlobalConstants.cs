@@ -16,6 +16,8 @@ namespace OdnoWindowsApp.Core
         public static readonly string MSEARCH = "MSEARCH";
         /* manual entry */
         public static readonly string MENTRY = "MENTRY";
+        
+        public static readonly string RgxPattern = @"[^\p{L}\p{N}\p{M}_ ]";
 
         /*
          * Settings:
@@ -25,5 +27,7 @@ namespace OdnoWindowsApp.Core
         public static string OdnoPath = $"{UserPath}\\Music\\odno";
         public static string Theme = "light";
         public static string DefaultCdRom = "D:\\";
+        public static bool IsFFmpegInstalled = false;
+
     }
 }
