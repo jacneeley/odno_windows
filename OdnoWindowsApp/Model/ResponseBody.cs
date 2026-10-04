@@ -3,6 +3,7 @@ using MetaBrainz.MusicBrainz.Interfaces.Entities;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using OdnoWindowsApp.Core;
+using OdnoWindowsApp.Util;
 using System;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
@@ -117,25 +118,27 @@ namespace OdnoWindowsApp.Model
             }
 
 			internal async void DownloadImage(string imgUrl, string tmp) {
-                var stream = await _client.GetStreamAsync(imgUrl);
-                string savedImg = "";
-                try
-                {
-                    Bitmap bitmap = new Bitmap(stream);
-
-                    savedImg = $"{tmp}\\cover.jpg";
-
-                    if (bitmap != null)
+				if (!("".Equals(imgUrl) || "".Equals(tmp))) {
+                    var stream = await _client.GetStreamAsync(imgUrl);
+                    string savedImg = "";
+                    try
                     {
-                        bitmap.Save(savedImg, ImageFormat.Jpeg);
+                        Bitmap bitmap = new Bitmap(stream);
+
+                        savedImg = $"{tmp}\\cover.jpg";
+
+                        if (bitmap != null)
+                        {
+                            bitmap.Save(savedImg, ImageFormat.Jpeg);
+                        }
                     }
-                }
-                catch
-                {
-                    MessageBox.Show("Image could not be downloaded.", "ODNO INFO", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    stream.Flush();
-                    stream.Close();
-                    _client.Dispose();
+                    catch
+                    {
+                        MessageBox.Show("Image could not be downloaded.", "ODNO INFO", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        stream.Flush();
+                        stream.Close();
+                        _client.Dispose();
+                    }
                 }
             }
         }

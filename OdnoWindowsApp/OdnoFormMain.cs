@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using OdnoWindowsApp.Core;
 using OdnoWindowsApp.Model;
 using OdnoWindowsApp.Services;
+using OdnoWindowsApp.Util;
 using OdnoWindowsApp.Views;
 using System.Text.RegularExpressions;
 
@@ -16,9 +17,9 @@ namespace OdnoWindowsApp
 
         private static bool albumProvided = false;
         private static bool artistProvided = false;
-        //private static string? albumDirPath;
 
-        private static ILogger _odnoLogger = OdnoLogger.BuildOdnoLogger("OdnoFormMain");
+        private static bool ManEntryClicked = false;
+
 
         /* Dependencies */
         private readonly FormSrv _formSrv;
@@ -140,12 +141,12 @@ namespace OdnoWindowsApp
                 {
                     Directory.CreateDirectory(GlobalConstants.OdnoPath);
                 }
-                catch
+                catch (Exception e)
                 {
                     //caller doesn't have access
                     string msg = "An Unexpected error occurred. odno folder could not be created. Try running odno with admin privileges.";
                     MessageBox.Show(msg, "odno ERROR");
-                    _odnoLogger.LogWarning($"{msg}\nLikely cause: caller doesn't have permission to user's files.");
+                    OdnoLogger.LogError(e, $"{msg}\nLikely cause: caller doesn't have permission to user's files.");
                     return;
                 }
             }
@@ -287,6 +288,7 @@ namespace OdnoWindowsApp
         }
         private void manEntryBtn_Click(object sender, EventArgs e)
         {
+            ManEntryClicked = true;
             lockButtons(true, GlobalConstants.MENTRY);
             if (string.Empty.Equals(albumFolderTb.Text))
             {
@@ -442,9 +444,9 @@ namespace OdnoWindowsApp
 
             var albumFiles = Directory.GetFiles(albumFolderTb.Text).ToList();
 
-            albumFiles.Sort(new Util.TrackNameComparer());
+            albumFiles.Sort(new Helpers.TrackNameComparer());
 
-            bool tracksReady = (Directory.Exists(GlobalConstants.OdnoPath) && albumFiles.Any());
+            bool tracksReady = (Directory.Exists(GlobalConstants.OdnoPath) && albumFiles.Count() > 0);
             if (string.Empty.Equals(artistTextBox.Text) || (string.Empty.Equals(albumTextBox.Text)
                 || !tracksReady))
             {
@@ -468,7 +470,9 @@ namespace OdnoWindowsApp
             });
 
             loading.Show();
-            if (!await _formSrv.Save(albumFolderTb.Text, imgMap[coverComboBox.Text], bitrate, ffmpegCmds)) {
+            
+            string img = imgMap.Count == 0 || !imgMap.ContainsKey(coverComboBox.Text) ? "" : imgMap[coverComboBox.Text];
+            if (!await _formSrv.Save(albumFolderTb.Text, img, bitrate, ffmpegCmds)) {
                 loading.Close();
                 MessageBox.Show("Could not save album...", "ODNO ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 lockButtons(saveBtn.Enabled, "SAVE");

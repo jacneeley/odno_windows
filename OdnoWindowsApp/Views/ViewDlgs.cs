@@ -244,9 +244,9 @@ namespace OdnoWindowsApp.Views
             {
                 using (FolderBrowserDialog fbd = new FolderBrowserDialog())
                 {
-                    if (Directory.Exists(GlobalConstants.OdnoPath))
+                    if (Directory.Exists(SettingsMngr.settings["odno_tunes_path"]))
                     {
-                        fbd.InitialDirectory = GlobalConstants.OdnoPath;
+                        fbd.InitialDirectory = SettingsMngr.settings["odno_tunes_path"];
                     }
                     else
                     {

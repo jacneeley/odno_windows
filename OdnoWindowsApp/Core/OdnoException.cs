@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.VisualBasic;
+using OdnoWindowsApp.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +11,6 @@ namespace OdnoWindowsApp.Core
 {
     internal class OdnoException : Exception
     {
-		private static ILogger _odnoLogger = OdnoLogger.BuildOdnoLogger("OdnoException");
 
 		private string _message;
 		private Exception cause;
@@ -52,18 +52,18 @@ namespace OdnoWindowsApp.Core
                 msg = $"ERROR: {oe._message} with cause: {oe.cause}. Description: {desc} @ {caller}";
             }
 
-			_odnoLogger.LogError(oe, msg);
+			OdnoLogger.LogError(oe, msg);
 		}
 
 		public static void CriticalException(OdnoException oe, string desc, string caller) {
 			if (oe != null)
 			{
 				string msg = $"ERROR: {oe._message} with cause: {oe.cause}. Description: {desc} @ {caller}";
-				_odnoLogger.LogCritical(oe, msg);
+                OdnoLogger.LogError(oe, msg);
 
-			}
+            }
 			else {
-                _odnoLogger.LogCritical(new OdnoException("Something bad and unexpected happened, so bad a proper exception was not captured...", new Exception(desc)), desc);
+                OdnoLogger.LogError(new OdnoException("Something bad and unexpected happened so bad, a proper exception was not captured...", new Exception(desc)), desc);
             }
 
 			MessageBox.Show("Catastrophic Error Occurred. This program will exit to preserve any data.");

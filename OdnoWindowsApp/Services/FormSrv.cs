@@ -70,8 +70,13 @@ namespace OdnoWindowsApp.Services
 
         public async Task<bool> Save(string albumDir, string imgUrl, string bitrate, List<TrackFileMngr> ffmpegInstances)
         {
+            bool isException = false;
             _albumDir = albumDir;
             _tmp = $"{albumDir}\\completed";
+
+            if (!ffmpegInstances.Any()) {
+                return false;
+            }
 
             if (Directory.Exists(_tmp))
             {
@@ -111,14 +116,16 @@ namespace OdnoWindowsApp.Services
             }
             catch
             {
-                throw new OdnoException("Could not process tracks.", new Exception("Parallel operation failed."));
+                OdnoException oe = new OdnoException("Could not process tracks.", new Exception("Parallel operation failed."));
+                OdnoException.HandleException(oe, oe.Message, "FormSrv.Save");
+                isException = true;
             }
             finally {
                 t1.Wait();
                 t1.Dispose();
             }
 
-            return true;
+            return !isException;
         }
 
         public async Task<bool> Rip(string albumDir)

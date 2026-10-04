@@ -5,9 +5,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace OdnoWindowsApp.Core
+namespace OdnoWindowsApp.Util
 {
-    public class Util
+    public class Helpers
     {
         public sealed class TrackNameComparer : IComparer<string>
         {

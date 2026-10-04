@@ -10,8 +10,8 @@ namespace OdnoWindowsApp.Core
     internal static class SettingsMngr
     {
 
-        static string _path;
-        static string EXE = "C:\\Users\\jake\\source\\repos\\OdnoWindowsApp\\OdnoWindowsApp\\Properties\\resources\\odno";
+        private static string PATH;
+        private readonly static string FILE = $"{GlobalConstants.projectDir}\\odno.settings.txt";
 
         public static readonly Dictionary<string, string> settings = new Dictionary<string, string>();
 
@@ -35,14 +35,14 @@ namespace OdnoWindowsApp.Core
         }
         
         public static async void SettingsFile(string settingsPath = null) {
-            var file = new FileInfo(settingsPath ?? EXE + ".settings.txt");
+            var file = new FileInfo(settingsPath ?? FILE);
             if (!file.Exists) {
                 NewSettingsFile(file.FullName, await FfmpegMngr.InitFFMPEG());
-                _path = settingsPath ?? EXE + ".settings.txt";
+                PATH = settingsPath ?? FILE;
                 return;
             }
 
-            _path = file.FullName;
+            PATH = file.FullName;
             Read();
 
             if (!bool.Parse(settings["is_ffmpeg_installed"]))
@@ -55,10 +55,10 @@ namespace OdnoWindowsApp.Core
         }
 
         public static void Read() {
-            if (!File.Exists(_path)) {
+            if (!File.Exists(PATH)) {
                 throw new FileNotFoundException("Settings file could not be found.");
             }
-            using (StreamReader reader = File.OpenText(_path)) {
+            using (StreamReader reader = File.OpenText(PATH)) {
                 while (!reader.EndOfStream) {
                         var kv = reader.ReadLine().Split("=");
                         settings.Add(kv[0], kv[1]);
@@ -69,8 +69,8 @@ namespace OdnoWindowsApp.Core
         public static bool Write() {
             try
             {
-                if (!File.Exists(_path)) { throw new FileNotFoundException("Settings file could not be found. Odno cannot save changes."); }
-                using (StreamWriter sw = new StreamWriter(_path, false)) {
+                if (!File.Exists(PATH)) { throw new FileNotFoundException("Settings file could not be found. Odno cannot save changes."); }
+                using (StreamWriter sw = new StreamWriter(PATH, false)) {
                     string line = "";
                     foreach (var item in settings)
                     {
