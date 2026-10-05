@@ -219,7 +219,7 @@ namespace OdnoWindowsApp
         ////////////
         /* events */
         ///////////
-        private void OdnoFormMain_Load(object sender, EventArgs e)
+        private async void OdnoFormMain_Load(object sender, EventArgs e)
         {
             /** TODO:
              *  Create pref file if it doesn't exist ; init file ; if exists read file contents into a hashmap.         [ DONE ]
@@ -229,7 +229,9 @@ namespace OdnoWindowsApp
              */
             this.KeyPreview = true;
 
-            SettingsMngr.SettingsFile();
+            var init = _viewDlgs.ShowLoading("Start up...");
+            init.Show();
+            await SettingsMngr.SettingsFile();
 
             InitOdnoDir();
 
@@ -239,6 +241,7 @@ namespace OdnoWindowsApp
             }
 
             initControls();
+            init.Close();
         }
 
         private void manSearchBtn_Click(object sender, EventArgs e)
@@ -357,6 +360,8 @@ namespace OdnoWindowsApp
 
         private async void ripBtn_Click(object sender, EventArgs e)
         {
+            LockForm();
+
             Form ripping = _viewDlgs.ShowLoading("Ripping\n This could take awhile...");
             ripping.Show();
             if (!(albumProvided & artistProvided & CDROMDrive.isReady))
@@ -386,6 +391,8 @@ namespace OdnoWindowsApp
             {
                 OdnoTabs.SelectedIndex = 1;
             }
+
+            LockForm();
         }
 
         private void cdAlbumNameBox_TextChanged(object sender, EventArgs e)
@@ -497,6 +504,7 @@ namespace OdnoWindowsApp
 
         private void lockButtons(bool isLock, string btnType)
         {
+            LockForm();
             switch (btnType)
             {
 
@@ -515,6 +523,7 @@ namespace OdnoWindowsApp
                     break;
 
             }
+            LockForm();
         }
 
         //Debugger for testing API calls - I made this because I was lazy.
@@ -632,6 +641,10 @@ namespace OdnoWindowsApp
         private void CDRomCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
             GlobalConstants.DefaultCdRom = CDRomCombo.SelectedItem.ToString();
+        }
+
+        private void LockForm() { 
+            this.Enabled = !this.Enabled;
         }
     }
 }

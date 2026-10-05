@@ -14,7 +14,7 @@ namespace OdnoWindowsApp.Core
     public static class FfmpegMngr
     {
         public static async Task<bool> InitFFMPEG() {
-            GlobalFFOptions.Configure(options => options.BinaryFolder = "./bin");
+            GlobalFFOptions.Configure(options => options.BinaryFolder = "./");
             var options = GlobalFFOptions.Current;
             if (!await checkFFMPEG(options)) {
                 OdnoException oe = new OdnoException(new Exception("FFmpeg could not be found or installed. Closing..."));
@@ -29,8 +29,8 @@ namespace OdnoWindowsApp.Core
                 FFMpegCore.Helpers.FFMpegHelper.VerifyFFMpegExists(options);
                 return true;
             }
-            catch (FFMpegException fe) {
-                var res = MessageBox.Show($"{fe.Message}" +
+            catch (Exception e) {
+                var res = MessageBox.Show($"{e.Message}" +
                     $"\nFFMpeg is required for ODNO. " +
                     $" FFmpeg is the leading multimedia framework, able to decode, encode, transcode, mux, demux, stream, filter and play pretty much anything that humans and machines have created." +
                     $"\nYou can read more about FFmpeg here: https://ffmpeg.org/about.html" +

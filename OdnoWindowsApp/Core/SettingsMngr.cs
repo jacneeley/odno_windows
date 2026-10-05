@@ -11,11 +11,14 @@ namespace OdnoWindowsApp.Core
     {
 
         private static string PATH;
-        private readonly static string FILE = $"{GlobalConstants.projectDir}\\odno.settings.txt";
+        private readonly static string FILE = $"{GlobalConstants.projectDir}\\config\\odno.settings.txt";
 
         public static readonly Dictionary<string, string> settings = new Dictionary<string, string>();
 
-        private static void NewSettingsFile(string settingsPath, bool is_ffmpeg = false) {
+        private static void NewSettingsFile(bool is_ffmpeg = false) {
+            
+            Directory.CreateDirectory($"{GlobalConstants.projectDir}\\config");
+
             var content = new List<String>() {
                 $"is_ffmpeg_installed={is_ffmpeg}",
                 "theme=light",
@@ -23,7 +26,7 @@ namespace OdnoWindowsApp.Core
                 $"odno_tunes_path={GlobalConstants.OdnoPath}"
             };
 
-            using (StreamWriter sw = File.CreateText($"{settingsPath}")) {
+            using (StreamWriter sw = File.CreateText(FILE)) {
                 foreach (var item in content) {
                     {
                         sw.WriteLine(item);
@@ -34,10 +37,10 @@ namespace OdnoWindowsApp.Core
             }
         }
         
-        public static async void SettingsFile(string settingsPath = null) {
+        public static async Task SettingsFile(string settingsPath = null) {
             var file = new FileInfo(settingsPath ?? FILE);
             if (!file.Exists) {
-                NewSettingsFile(file.FullName, await FfmpegMngr.InitFFMPEG());
+                NewSettingsFile(await FfmpegMngr.InitFFMPEG());
                 PATH = settingsPath ?? FILE;
                 return;
             }

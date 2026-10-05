@@ -9,7 +9,7 @@ namespace OdnoWindowsApp.Core
     internal static class GlobalConstants
     {
         public static readonly string UserPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        public static readonly string projectDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
+        public static readonly string projectDir = Directory.GetParent(Environment.ProcessPath).FullName;
         public static readonly IReadOnlyList<string> bitrates = new List<string>() { "Normal (128kbps)", "Good (192kbps recommended)", "Very High (256kbps)", "Ultra (384kbps)" };
         /* auto search */
         public static readonly string AUTO = "AUTO";

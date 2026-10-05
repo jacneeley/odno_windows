@@ -12,7 +12,7 @@ namespace OdnoWindowsApp.Util
 {
     internal class OdnoLogger
     {
-        internal static readonly string logDir = $"{GlobalConstants.projectDir}\\.logs";
+        internal static readonly string logDir = $"{GlobalConstants.projectDir}\\config\\.logs";
         internal static string _path = "";
 
         private static bool created = false;
@@ -54,6 +54,8 @@ namespace OdnoWindowsApp.Util
         }
 
         private static void check() {
+            Directory.CreateDirectory($"{GlobalConstants.projectDir}\\config");
+            Directory.CreateDirectory($"{GlobalConstants.projectDir}\\config\\.logs");
             if (Directory.CreateDirectory(logDir).Exists) { created = true; }
         }
 
