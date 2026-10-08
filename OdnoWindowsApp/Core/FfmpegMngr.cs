@@ -146,9 +146,5 @@ namespace OdnoWindowsApp.Core
                 throw new FFMpegException(FFMpegExceptionType.Operation, "converter failed.");
             }
         }
-
-        public static void RipDataFromCD() { 
-            //TODO: figure this one.
-        }
     }
 }
