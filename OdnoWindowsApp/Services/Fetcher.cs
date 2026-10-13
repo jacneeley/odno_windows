@@ -1,5 +1,7 @@
 ﻿using MetaBrainz.MusicBrainz.Interfaces.Entities;
+using OdnoWindowsApp.Core;
 using OdnoWindowsApp.Model;
+using OdnoWindowsApp.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,12 +17,19 @@ namespace OdnoWindowsApp.Services
     public class Fetcher
     {
         public async Task<ResponseBody> GetAlbumFromLastFM(string artist, string album) {
-            string apiKey = "149be4891079005755193ba1a4b95993";
-            string query = $"http://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key={apiKey}&artist={artist}&album={album}&autocorrect=1&format=json";
+            try
+            {
+                string apiKey = "149be4891079005755193ba1a4b95993";
+                string query = $"http://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key={apiKey}&artist={artist}&album={album}&autocorrect=1&format=json";
 
-            ResponseBody response = new ResponseBody.ResponseBodyBuilder(query).build();
+                ResponseBody response = new ResponseBody.ResponseBodyBuilder(query).build();
 
-            return await response.get();
+                return await response.get();
+            }
+            catch (HttpRequestException hre) {
+                OdnoException.HandleException(new OdnoException(hre), hre.Message, "Fetcher.GetAlbumFromLastFM");
+                throw;
+            }
         }
 
         public static void GetImgFromHttp(string imgUrl, string tmpDir) {

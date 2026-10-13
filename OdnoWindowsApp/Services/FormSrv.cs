@@ -2,6 +2,7 @@
 using FFMpegCore.Exceptions;
 using OdnoWindowsApp.Core;
 using OdnoWindowsApp.Model;
+using OdnoWindowsApp.Util;
 using System.CodeDom;
 using System.Text.RegularExpressions;
 using static OdnoWindowsApp.Model.LastFmObjectModel;
@@ -30,7 +31,7 @@ namespace OdnoWindowsApp.Services
             
             try
             {
-                for (int i = 0; i < response.tracks.track.Count; i++)
+                for (int i = 0; (response.tracks != null && i < response.tracks.track.Count); i++)
                 {
                     
                     var track = response.tracks.track[i];
@@ -52,16 +53,23 @@ namespace OdnoWindowsApp.Services
             {
                 OdnoException.HandleException(new OdnoException(ae.Message, ae),
                     "Likely invalid track data",
-                    "RenderResponse");
+                    "FormSrv.GetSongsToRender");
                 return songs;
             }
         }
 
         public async Task<ResponseBody> FetchAlbum(string[] albumSource) {
-            var a = albumSource.Last().Split("-");
-            string album = a[0].Replace("_", " ");
-            string artist = a[1].Replace("_", " ");
-           return await _fetcher.GetAlbumFromLastFM(artist, album);
+            try
+            {
+                var a = albumSource.Last().Split("-");
+                string album = a[0].Replace("_", " ");
+                string artist = a[1].Replace("_", " ");
+                return await _fetcher.GetAlbumFromLastFM(artist, album);
+            }
+            catch (Exception e) {
+                OdnoException.HandleException(new OdnoException(e), e.Message, "FormSrv.FetchAlbum");
+                return null;
+            }
         }
 
         public async Task<ResponseBody> GetAlbumFromLastFM(string artist, string album) {
