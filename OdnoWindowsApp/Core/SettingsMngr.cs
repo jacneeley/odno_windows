@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
+using System.ComponentModel.Design;
 
 namespace OdnoWindowsApp.Core
 {
@@ -13,7 +14,7 @@ namespace OdnoWindowsApp.Core
         private static string PATH;
         private readonly static string FILE = $"{GlobalConstants.projectDir}\\config\\odno.settings.txt";
 
-        public static readonly Dictionary<string, string> settings = new Dictionary<string, string>();
+        public static Dictionary<string, string> settings = new Dictionary<string, string>();
 
         private static void NewSettingsFile(bool is_ffmpeg = false) {
             
@@ -81,6 +82,8 @@ namespace OdnoWindowsApp.Core
                         sw.WriteLine(line);
                     }
                 }
+
+                UpdateVars();
                 return true;
             }
             catch (FileNotFoundException fnfe)
@@ -94,18 +97,12 @@ namespace OdnoWindowsApp.Core
             }
         }
 
-        private static bool UpdateVars() {
-            bool changes = false;
-            if (!GlobalConstants.OdnoPath.Equals(settings["odno_tunes_path"])) { GlobalConstants.OdnoPath = settings["odno_tunes_path"]; changes = true; }
-            if (!GlobalConstants.Theme.Equals(settings["theme"])) { GlobalConstants.Theme = settings["theme"]; changes = true; }
-            if (!GlobalConstants.DefaultCdRom.Equals(settings["default_cdrom"])) { GlobalConstants.DefaultCdRom = settings["default_cdrom"]; changes = true; }
-            if (GlobalConstants.IsFFmpegInstalled != bool.Parse(settings["is_ffmpeg_installed"])) { GlobalConstants.IsFFmpegInstalled = bool.Parse(settings["is_ffmpeg_installed"]); changes = true; }
+        private static void UpdateVars() {
+            if (!GlobalConstants.OdnoPath.Equals(settings["odno_tunes_path"])) GlobalConstants.OdnoPath = settings["odno_tunes_path"];
+            if (!GlobalConstants.Theme.Equals(settings["theme"])) GlobalConstants.Theme = settings["theme"];
+            if (!GlobalConstants.DefaultCdRom.Equals(settings["default_cdrom"])) GlobalConstants.DefaultCdRom = settings["default_cdrom"];
+            if (GlobalConstants.IsFFmpegInstalled != bool.Parse(settings["is_ffmpeg_installed"])) GlobalConstants.IsFFmpegInstalled = bool.Parse(settings["is_ffmpeg_installed"]);
 
-            if (changes) {
-                Write();
-            }
-
-            return changes;
         }
     }
 }
