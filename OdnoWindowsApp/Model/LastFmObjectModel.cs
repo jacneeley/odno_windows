@@ -11,7 +11,7 @@ namespace OdnoWindowsApp.Model
     {
         public record Album(
             [property: JsonProperty("artist")] string artist,
-            [property: JsonProperty("mbid")] string mbid,
+            [property: JsonProperty("mbid")] string? mbid,
             [property: JsonProperty("tags")] Tags tags,
             [property: JsonProperty("playcount")] string playcount,
             [property: JsonProperty("image")] IReadOnlyList<Image> image,
