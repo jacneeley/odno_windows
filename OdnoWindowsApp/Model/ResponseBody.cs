@@ -28,8 +28,6 @@ namespace OdnoWindowsApp.Model
 		private List<string> _errList;
 		private bool _isSuccess;
 
-        private static ILogger _odnoLogger = OdnoLogger.BuildOdnoLogger("ResponseBody");
-
         internal class HttpService {
 			private readonly HttpClient _client;
 			private HttpResponseMessage? _resp = null;
@@ -47,24 +45,22 @@ namespace OdnoWindowsApp.Model
 			}
 
 			internal async Task<LastFmObjectModel.Album> GetJsonResponse() {
-				if (_resp != null) {
-					var payload = await _resp.Content.ReadAsStringAsync();
-					try
-					{
-                        LastFmObjectModel.Root? json = JsonConvert.DeserializeObject<LastFmObjectModel.Root>(payload);
-                        if (json != null)
-                        {
-                            LastFmObjectModel.Album j = json.album;
-                            return j;
-                        }
-                    }
-					catch (Exception ex) {
-						_odnoLogger.LogError(ex.Message);
-						return jsonFail();
-					}
-                }
+				try
+				{
+                    if (_resp == null) return jsonFail();
 
-				return jsonFail();
+                    var payload = await _resp.Content.ReadAsStringAsync();
+                    LastFmObjectModel.Root? json = JsonConvert.DeserializeObject<LastFmObjectModel.Root>(payload);
+					
+					if (json == null) return jsonFail();
+
+                    return json.album;
+                }
+				catch (Exception ex)
+				{
+					OdnoException.HandleException(new OdnoException(ex), ex.Message, "ResponseBody.GetResponseJson");
+                    return jsonFail();
+                }
 			}
 
 			private LastFmObjectModel.Album jsonFail() {
@@ -73,8 +69,16 @@ namespace OdnoWindowsApp.Model
                 return failedJson;
             }
 
+			/// <summary>
+			/// Get Release Year from musicbrainz API via mbid because for some reason LastFM doesn't give user the year anymore?
+			/// </summary>
+			/// <param name="mbid"></param>
+			/// <returns>int year or 0 if year cannot be retrieved.</returns>
             internal async Task<int?> GetDateFromMusicBrainz(string mbid)
             {
+				if (String.IsNullOrEmpty(mbid)) {
+					return 0;
+				}
                 /*TODO: investigate 
                  * https://musicbrainz.org/doc/musicbrainz-sharp
                  * https://github.com/Zastai/MetaBrainz.MusicBrainz/blob/main/user-guide/UserGuide.md
@@ -143,6 +147,11 @@ namespace OdnoWindowsApp.Model
             }
         }
 
+		/// <summary>
+		/// Send GET request to target URL.
+		/// </summary>
+		/// <returns>ResponseBody</returns>
+		/// <exception cref="HttpRequestException"></exception>
 		public async Task<ResponseBody> get() {
 			try
 			{
@@ -161,10 +170,12 @@ namespace OdnoWindowsApp.Model
 				_responseCode = (int)resp.StatusCode;
 
 				var lastfmJson = await httpSrv.GetJsonResponse();
-				
-				int? year = await httpSrv.GetDateFromMusicBrainz(lastfmJson.mbid);
+                if (lastfmJson.error != null) { 
+					_isSuccess = false;
+					return this;
+				}
 
-				if (lastfmJson.error != null) { _isSuccess = false; }
+                int? year = await httpSrv.GetDateFromMusicBrainz(lastfmJson.mbid);
 
                 LastFmObjectModel.Album finalJson = new LastFmObjectModel.Album(
                     lastfmJson.artist, lastfmJson.mbid, lastfmJson.tags,
@@ -176,19 +187,13 @@ namespace OdnoWindowsApp.Model
             }
 			catch (HttpRequestException hre)
 			{
-				//TODO: handle this
 				_isSuccess = false;
-				throw new HttpRequestException($"Failed to get content from source: {_url}.", hre);
+				throw;
 			}
 			catch (ArgumentException ae) {
                 _isSuccess = false;
                 throw new HttpRequestException($"Failed to get content from source: {_url}.", ae);
             }
-            //catch (JsonException je)
-            //{
-            //    _isSuccess = false;
-            //    throw new HttpRequestException($"Failed to get content from source: {_url}.", je);
-            //}
             catch (NotSupportedException nse)
             {
                 _isSuccess = false;
