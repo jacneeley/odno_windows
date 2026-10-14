@@ -44,10 +44,6 @@ namespace OdnoWindowsApp.Core
                                 isReady = drive.IsReady;
                                 _drive = drive;
 
-                                //if (!string.IsNullOrEmpty(reloadStr))
-                                //{
-                                //    return isReady;
-                                //}
                                 return isReady;
                             }
                         }
@@ -70,7 +66,7 @@ namespace OdnoWindowsApp.Core
             }
         }
 
-        public static bool OpenClose() {
+        public static async Task<bool> OpenClose() {
             if (_cdDrive.Toggler) { _cdDrive.Close(); }
             else {
                 if (string.Empty.Equals(drivePath))
@@ -81,41 +77,45 @@ namespace OdnoWindowsApp.Core
                 _cdDrive.Open(char.Parse(drivePath)); 
             }
 
-            isReady = watchForDrive(drivePath);
-            return isReady;
+            return await WatchForDrive(drivePath);
         }
 
-        public static bool watchForDrive(string drive) {
+        public static async Task<bool> WatchForDrive(string drive) {
+            // TODO: Test watchForDrive change
             Thread.Sleep(1000); //give it a sec
             int start = DateTime.Now.Second;
             int end = 0;
-            while (true)
+            return await Task.Run(() =>
             {
-                try
+                while (true)
                 {
-                    if (_cdDrive.IsCDReady())
+                    try
                     {
-                        return true;
+                        if (_cdDrive.IsCDReady())
+                        {
+                            return isReady = true;
+                        }
+
+                        Thread.Sleep(250);
+
+                        end = DateTime.Now.Second;
+                        if (end - start >= 90)
+                        {
+                            throw new TimeoutException("Timeout: Drive could not be found. User most likely left drive open for too long or some other issue.");
+                        }
                     }
-
-                    Thread.Sleep(250);
-
-                    end = DateTime.Now.Second;
-                    if (end - start >= 90)
+                    catch (IOException ioe)
                     {
-                        throw new TimeoutException("Timeout: Drive could not be found. User most likely left drive open for too long or some other issue.");
+                        OdnoException.CriticalException(new OdnoException(ioe), ioe.Message, "CDROMDrive.watchForDrive");
+                    }
+                    catch (TimeoutException te)
+                    {
+                        OdnoException.HandleException(new OdnoException(te), te.Message, "CDROMDrive.watchForDrive");
+                        return false;
                     }
                 }
-                catch (IOException ioe)
-                {
-                    OdnoException.CriticalException(new OdnoException(ioe), ioe.Message, "CDROMDrive.watchForDrive");
-                }
-                catch (TimeoutException te)
-                {
-                    OdnoException.HandleException(new OdnoException(te), te.Message, "CDROMDrive.watchForDrive");
-                    return false;
-                }
-            }
+
+            });
         }
 
         public static async Task Rip(string dest = "") {
