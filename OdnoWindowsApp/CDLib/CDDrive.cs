@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using OdnoWindowsApp.Core;
 using NAudio.Wave;
+using OdnoWindowsApp.Util;
 
 namespace OdnoWindowsApp.CDLib
 {
@@ -144,7 +145,6 @@ namespace OdnoWindowsApp.CDLib
                 throw new IOException("Track: " + trackNum + " could not be written to file...", ae);
             }
             catch (Exception e) {
-                //log
                 throw;
             }
         }
