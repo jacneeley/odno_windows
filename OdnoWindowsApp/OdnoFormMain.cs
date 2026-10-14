@@ -165,7 +165,9 @@ namespace OdnoWindowsApp
             if (!albumBox.Enabled) { albumBox.Enabled = true; }
             albumTextBox.Text = response.name;
             artistTextBox.Text = response.artist;
-            genreComboBox.DataSource = response.tags.tag.Select(x => x.name).ToArray();
+            genreComboBox.DataSource = response.tags != null ?
+                response.tags.tag.Select(x => x.name).ToArray()
+                : new string[] { "N/A" };
 
             var release_info = response.wiki == null ? "" : response.wiki.summary;
 
@@ -189,7 +191,8 @@ namespace OdnoWindowsApp
 
             if (!_formSrv.GetSongsToRender(response, albumImg).Any())
             {
-                MessageBox.Show("Failed to render songs...", "ODNO ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Failed to retrieve tracks...", "ODNO INFO", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ManEntryClicked = true;
                 return;
             }
 
@@ -198,7 +201,7 @@ namespace OdnoWindowsApp
 
         private bool CDLoader()
         {
-            if (CDROMDrive.LoadDisc(GlobalConstants.OdnoPath))
+            if (CDROMDrive.LoadDisc(GlobalConstants.OdnoPath));
             {
                 CDRomCombo.DataSource = CDROMDrive.CDROMS;
                 CDRomCombo.Text = CDROMDrive.CDROMS[0];
@@ -216,17 +219,48 @@ namespace OdnoWindowsApp
             return false;
         }
 
+        private void LockButtons(bool isLock, string btnType)
+        {
+            switch (btnType)
+            {
+                case "MENTRY":
+                    break;
+                case "SAVE":
+                    albumBox.Enabled = !isLock;
+                    browsebtn.Enabled = !isLock;
+                    manEntryBtn.Enabled = !isLock;
+                    manSearchBtn.Enabled = !isLock;
+                    autoSearchBtn.Enabled = !isLock; break;
+                    saveBtn.Enabled = !isLock; break;
+                case "RIP":
+                    foreach (var tab in OdnoTabs.TabPages)
+                    {
+                        TabPage tp = (TabPage)tab;
+                        tp.Enabled = !isLock;
+                    }
+                    driveInfoBox.Enabled = !isLock;
+                    browsebtn.Enabled = !isLock;
+                    manEntryBtn.Enabled = !isLock;
+                    manSearchBtn.Enabled = !isLock;
+                    autoSearchBtn.Enabled = !isLock; break;
+                    saveBtn.Enabled = !isLock; break;
+                    ripBtn.Enabled = !isLock; break;
+                default:
+                    albumBox.Enabled = !isLock;
+                    
+                    saveBtn.Enabled = !isLock;
+                    browsebtn.Enabled = !isLock;
+                    manEntryBtn.Enabled = !isLock;
+                    manSearchBtn.Enabled = !isLock;
+                    autoSearchBtn.Enabled = !isLock; break;
+            }
+        }
+
         ////////////
         /* events */
         ///////////
         private async void OdnoFormMain_Load(object sender, EventArgs e)
         {
-            /** TODO:
-             *  Create pref file if it doesn't exist ; init file ; if exists read file contents into a hashmap.         [ DONE ]
-             *  Check if FFMPEG is installed ; if not, install it with winget ; save "installed = true" to file         [ DONE ]
-             *  find odno dir in user music folder ; if it doesn't exist, create it ; save location to file             [ DONE ]
-             *  
-             */
             this.KeyPreview = true;
 
             var init = _viewDlgs.ShowLoading("Start up...");
@@ -246,12 +280,14 @@ namespace OdnoWindowsApp
 
         private void manSearchBtn_Click(object sender, EventArgs e)
         {
-            lockButtons(true, GlobalConstants.MSEARCH);
+            ManEntryClicked = false;
+            songs.Clear();
+            LockButtons(true, GlobalConstants.MSEARCH);
 
             if ("".Equals(albumFolderTb.Text))
             {
                 MessageBox.Show("You must select a target album folder or create one.", "INFO");
-                lockButtons(false, GlobalConstants.MSEARCH);
+                LockButtons(false, GlobalConstants.MSEARCH);
                 return;
             }
 
@@ -262,19 +298,21 @@ namespace OdnoWindowsApp
 
             RenderResponse(response);
 
-            lockButtons(false, GlobalConstants.MSEARCH);
+            LockButtons(false, GlobalConstants.MSEARCH);
 
             loading.Close();
         }
 
         private async void autoSearchBtn_Click(object sender, EventArgs e)
         {
-            lockButtons(true, GlobalConstants.AUTO);
+            ManEntryClicked = false;
+            songs.Clear();
+            LockButtons(true, GlobalConstants.AUTO);
 
             if (string.Empty.Equals(albumFolderTb.Text))
             {
                 MessageBox.Show("You must select a target album folder.", "INFO");
-                lockButtons(false, GlobalConstants.AUTO);
+                LockButtons(false, GlobalConstants.AUTO);
                 return;
             }
             
@@ -283,26 +321,31 @@ namespace OdnoWindowsApp
 
             var response = await _formSrv.FetchAlbum(albumFolderTb.Text.Split("\\"));
 
+            if (response == null || !response.IsSuccess) { 
+                MessageBox.Show("Album could not be found on LastFM.", "ODNO INFO", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+
             RenderResponse(response.ResponseJson);
 
-            lockButtons(false, GlobalConstants.AUTO);
+            LockButtons(false, GlobalConstants.AUTO);
 
             loading.Close();
         }
         private void manEntryBtn_Click(object sender, EventArgs e)
         {
+            songs.Clear();
             ManEntryClicked = true;
-            lockButtons(true, GlobalConstants.MENTRY);
+            LockButtons(true, GlobalConstants.MENTRY);
             if (string.Empty.Equals(albumFolderTb.Text))
             {
                 MessageBox.Show("You must select a target album folder or create one.", "INFO");
-                lockButtons(false, GlobalConstants.MENTRY);
+                LockButtons(false, GlobalConstants.MENTRY);
                 return;
             }
 
             albumBox.Enabled = true;
 
-            lockButtons(false, GlobalConstants.MENTRY);
+            LockButtons(false, GlobalConstants.MENTRY);
         }
 
         private void showTracksBtn_Click(object sender, EventArgs e)
@@ -310,7 +353,7 @@ namespace OdnoWindowsApp
             List<Song> tracks;
             if (responseJson != null)
             {
-                tracks = _viewDlgs.showTracks(songs, albumTextBox.Text, artistTextBox.Text);
+                tracks = _viewDlgs.showTracks(songs, albumTextBox.Text, artistTextBox.Text, ManEntryClicked);
                 if (debug)
                 {
                     string concat = string.Join(" ", tracks.Select(s => s.ToString()).ToList());
@@ -320,7 +363,7 @@ namespace OdnoWindowsApp
             else
             {
                 //manual entry
-                tracks = _viewDlgs.showTracks(songs, albumTextBox.Text, artistTextBox.Text);
+                tracks = _viewDlgs.showTracks(songs, albumTextBox.Text, artistTextBox.Text, true);
             }
         }
 
@@ -360,7 +403,7 @@ namespace OdnoWindowsApp
 
         private async void ripBtn_Click(object sender, EventArgs e)
         {
-            LockForm();
+            LockButtons(ripBtn.Enabled, "RIP");
 
             Form ripping = _viewDlgs.ShowLoading("Ripping\n This could take awhile...");
             ripping.Show();
@@ -392,7 +435,7 @@ namespace OdnoWindowsApp
                 OdnoTabs.SelectedIndex = 1;
             }
 
-            LockForm();
+            LockButtons(ripBtn.Enabled, "RIP");
         }
 
         private void cdAlbumNameBox_TextChanged(object sender, EventArgs e)
@@ -434,7 +477,6 @@ namespace OdnoWindowsApp
         private async void saveBtn_Click(object sender, EventArgs e)
         {
             /**
-             * logic
              * There must be files in the target dir
              * create tmp dir
              * save image
@@ -443,7 +485,7 @@ namespace OdnoWindowsApp
              * do conversions (if any)
              */
             Form loading = _viewDlgs.ShowLoading();
-            lockButtons(saveBtn.Enabled, "SAVE");
+            LockButtons(saveBtn.Enabled, "SAVE");
 
             if (Directory.Exists($"{albumFolderTb.Text}\\CD")) {
                 _formSrv.Redo(albumFolderTb.Text);
@@ -458,16 +500,18 @@ namespace OdnoWindowsApp
                 || !tracksReady))
             {
                 MessageBox.Show("Nothing to save, folder was empty...", "odno INFO");
-                lockButtons(saveBtn.Enabled, "SAVE");
+                LockButtons(saveBtn.Enabled, "SAVE");
                 return;
             }
 
             string bitrate = string.IsNullOrEmpty(bitrateCB.Text) ? "" : bitrateCB.Text;
 
             var ffmpegCmds = new List<TrackFileMngr>();
+            int yr = int.Parse(yearTextBox.Text);
             songs.ForEach(song =>
             {
                 song.Genre = genreComboBox.Text;
+                song.Year = yr != song.Year ? yr : song.Year;
 
                 string orig = albumFiles[song.TrackNum - 1];
                 string type = orig.Split('.').Last();
@@ -482,7 +526,8 @@ namespace OdnoWindowsApp
             if (!await _formSrv.Save(albumFolderTb.Text, img, bitrate, ffmpegCmds)) {
                 loading.Close();
                 MessageBox.Show("Could not save album...", "ODNO ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                lockButtons(saveBtn.Enabled, "SAVE");
+                if (songs.Count == 0) MessageBox.Show("Did you forget to add tracks?", "ODNO INFO", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                LockButtons(saveBtn.Enabled, "SAVE");
                 return;
             }
 
@@ -499,31 +544,7 @@ namespace OdnoWindowsApp
             loading.Close();
             MessageBox.Show("Process Complete!", "Success!", MessageBoxButtons.OK);
 
-            lockButtons(saveBtn.Enabled, "SAVE");
-        }
-
-        private void lockButtons(bool isLock, string btnType)
-        {
-            LockForm();
-            switch (btnType)
-            {
-
-                case "AUTO":
-                    manEntryBtn.Enabled = !isLock;
-                    manSearchBtn.Enabled = !isLock; break;
-                case "MSEARCH":
-                    manEntryBtn.Enabled = !isLock;
-                    autoSearchBtn.Enabled = !isLock; break;
-                case "MENTRY":
-                    manSearchBtn.Enabled = !isLock;
-                    autoSearchBtn.Enabled = !isLock; break;
-                case "SAVE":
-                    saveBtn.Enabled = !isLock; break;
-                default:
-                    break;
-
-            }
-            LockForm();
+            LockButtons(saveBtn.Enabled, "SAVE");
         }
 
         //Debugger for testing API calls - I made this because I was lazy.
@@ -615,7 +636,6 @@ namespace OdnoWindowsApp
             if (OdnoTabs.SelectedIndex == 0 && !CDLoader())
             {
                 OdnoTabs.SelectedIndex = 1;
-                //MessageBox.Show("An Unknown Error Ocurred: Could not find CD/DVD Drive(s).", "ODNO ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
         }
@@ -634,17 +654,12 @@ namespace OdnoWindowsApp
 
         private void showHelpF1ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //TODO:
-            //Open help page in browser.
+            // TODO: Open help page in browser.
         }
 
         private void CDRomCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
             GlobalConstants.DefaultCdRom = CDRomCombo.SelectedItem.ToString();
-        }
-
-        private void LockForm() { 
-            this.Enabled = !this.Enabled;
         }
     }
 }
