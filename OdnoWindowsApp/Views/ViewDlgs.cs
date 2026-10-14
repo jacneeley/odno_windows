@@ -3,6 +3,7 @@ using OdnoWindowsApp.Model;
 using OdnoWindowsApp.Services;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -113,9 +114,11 @@ namespace OdnoWindowsApp.Views
 
             return responseJson;
         }
-        public List<Song> showTracks(List<Song> songs, string album, string artist)
+        public List<Song> showTracks(List<Song> songs, string album, string artist, bool manualMode = false)
         {
             bool edited = false;
+
+            int track_num = songs.Count;
 
             ResponsiveDialog TrackDlg = new ResponsiveDialog(true, "SMALL");
 
@@ -129,23 +132,23 @@ namespace OdnoWindowsApp.Views
 
             DataGridView tracksView = TrackDlg.ResponsiveDataGridView(new int[2] { reset.Bottom + 25, 25 });
 
+            Button addBtn = TrackDlg.ResponsiveButton(new int[2] { tracksView.Top, tracksView.Right + 25 }, "+");
+
             Button OK = TrackDlg.ResponsiveButton(new int[2] { tracksView.Bottom + 25, ((TrackDlg.Width / 2) - 50) }, "OK");
 
             var source = new BindingSource();
             
             List<TracksModel> tracks = new List<TracksModel>();
-            if (songs.Any())
+            if (songs.Count > 0)
             {
                 tracks = songs.Select(s => new TracksModel(s.TrackNum, s.Title)).ToList();
             }
 
-            source.DataSource = tracks;
-            tracksView.DataSource = source;
-            var prev = source;
+            //source.DataSource = tracks;
+            tracksView.DataSource = tracks;
             tracksView.ReadOnly = true;
 
             edit.Click += (sender, e) => {
-                prev = source;
                 done.Visible = true;
                 reset.Visible = true;
                 tracksView.ReadOnly = false;
@@ -162,17 +165,25 @@ namespace OdnoWindowsApp.Views
                 OK.Enabled = true;
             };
             reset.Click += (sender, e) => {
-                //TODO: figure this shit out...
-                //tracksView.Rows.Clear();
-                //tracksView.DataSource = prev;
-                //tracksView.ReadOnly = true;
-                //edit.Enabled = true;
-                //reset.Visible = false;
-                //done.Visible = false;
-                //OK.Enabled = true;
-                //tracksView.Refresh();
                 TrackDlg.Close();
             };
+
+            if (manualMode) {
+                tracksView.AllowUserToAddRows = true;
+                tracksView.ReadOnly = false;
+                if (track_num == 0) {
+                    track_num++;
+                    tracks.Add(new TracksModel(track_num, $"<enter track {track_num}>"));
+                }
+                addBtn.Click += (sender, e) =>
+                {
+                    edited = true;
+                    tracksView.DataSource = null;
+                    track_num++;
+                    tracks.Add(new TracksModel(track_num, $"<enter track {track_num}>"));
+                    tracksView.DataSource = tracks;
+                };
+            }
 
             OK.Click += (sender, e) => {
                 if (edited)
@@ -181,25 +192,39 @@ namespace OdnoWindowsApp.Views
                     {
                         string title = row.Cells["Title"].Value.ToString();
                         int trackNum = int.Parse(row.Cells["TrackNum"].Value.ToString());
-                        Song curr = songs[trackNum - 1];
-                        curr.TrackNum = trackNum;
-                        curr.Title = title;
+
+                        if (title == null || title.Contains("<enter track")) {
+                            MessageBox.Show($"Provide a valid title at track {trackNum}");
+                            return;
+                        }
+                        
+                        if (manualMode)
+                        {
+                            songs.Add(new Song.SongBuilder(title, artist, album).TrackNum(trackNum).build());
+                        }
+                        else if(!manualMode) {
+                            Song curr = songs[trackNum - 1];
+                            curr.TrackNum = trackNum;
+                            curr.Title = title;
+                        }
                     }
                     songs.OrderBy(s => s.TrackNum);
 
                     OK.DialogResult = DialogResult.OK;
                     TrackDlg.Close();
                 }
-                else {
+                else
+                {
                     TrackDlg.Close();
                 }
             };
 
             TrackDlg.Controls.Add(trackLabel);
             TrackDlg.Controls.Add(tracksView);
-            TrackDlg.Controls.Add(edit);
+            if(!manualMode) TrackDlg.Controls.Add(edit);
             TrackDlg.Controls.Add(done);
             TrackDlg.Controls.Add(reset);
+            if(manualMode)TrackDlg.Controls.Add(addBtn);
             TrackDlg.Controls.Add(OK);
             TrackDlg.AcceptButton = OK;
 
@@ -215,6 +240,7 @@ namespace OdnoWindowsApp.Views
             bool change = false;
             bool pathChange = false;
             bool CDROMChange = false;
+            bool typedInPath = false;
 
             ResponsiveDialog settingsDlg = new ResponsiveDialog(true, "SMALL");
 
@@ -232,7 +258,7 @@ namespace OdnoWindowsApp.Views
 
             SaveTxtBox.KeyPress += (s, e) =>
             {
-                pathChange = !SaveTxtBox.Text.Equals(SettingsMngr.settings["odno_tunes_path"]);
+                typedInPath = true;
             };
 
             CDROMCombo.SelectedValueChanged += (s, e) =>
@@ -258,10 +284,16 @@ namespace OdnoWindowsApp.Views
                         SaveTxtBox.Text = fbd.SelectedPath;
                     }
                 }
+
+                pathChange = !SaveTxtBox.Text.Equals(SettingsMngr.settings["odno_tunes_path"]);
             };
 
             save.Click += (s, e) =>
             {
+                if (typedInPath) {
+                    pathChange = !SaveTxtBox.Text.Equals(SettingsMngr.settings["odno_tunes_path"]);
+                }
+
                 change = (pathChange || CDROMChange);
                 if (change) {
                     SettingsMngr.settings["odno_tunes_path"] = SaveTxtBox.Text;
@@ -296,9 +328,9 @@ namespace OdnoWindowsApp.Views
 
             bool done = false;
 
-            diskDlg.Shown += (s, e) =>
+            diskDlg.Shown += async (s, e) =>
             {
-                done = CDROMDrive.OpenClose();
+                done = await CDROMDrive.OpenClose();
                 diskDlg.Close();
             };
 

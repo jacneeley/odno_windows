@@ -31,6 +31,7 @@ namespace OdnoWindowsApp.Views
                 this.ControlBox = false;
                 this.ShowInTaskbar = false;
                 this.TopMost = true;
+                
             }
 
             if (size.Equals("TINY"))
